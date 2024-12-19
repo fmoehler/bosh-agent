@@ -87,6 +87,8 @@ func (boot bootstrap) Run() (err error) { //nolint:gocyclo
 		return bosherr.WrapError(err, "Settings user password")
 	}
 
+	boot.logger.Info(boot.logTag, "NEW AGENT IPV6 CONFIGURATION")
+
 	if err = boot.platform.SetupIPv6(settings.Env.Bosh.IPv6); err != nil {
 		return bosherr.WrapError(err, "Setting up IPv6")
 	}
@@ -94,6 +96,8 @@ func (boot bootstrap) Run() (err error) { //nolint:gocyclo
 	if err = boot.platform.SetupHostname(settings.AgentID); err != nil {
 		return bosherr.WrapError(err, "Setting up hostname")
 	}
+
+	boot.logger.Info(boot.logTag, "NEW AGENT NETWORKING CONFIGURATION")
 
 	if err = boot.platform.SetupNetworking(settings.Networks, settings.GetMbusURL()); err != nil {
 		return bosherr.WrapError(err, "Setting up networking")

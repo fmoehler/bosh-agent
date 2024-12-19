@@ -126,9 +126,11 @@ func NewInterfaceConfigurationCreator(logger boshlog.Logger) InterfaceConfigurat
 }
 
 func (creator interfaceConfigurationCreator) CreateInterfaceConfigurations(networks boshsettings.Networks, interfacesByMAC map[string]string) ([]StaticInterfaceConfiguration, []DHCPInterfaceConfiguration, error) {
-	if !networks.HasInterfaceAlias() && len(interfacesByMAC) < len(networks) {
-		return nil, nil, bosherr.Errorf("Number of network settings '%d' is greater than the number of network devices '%d'", len(networks), len(interfacesByMAC))
-	}
+	// if !networks.HasInterfaceAlias() && len(interfacesByMAC) < len(networks) {
+	// 	return nil, nil, bosherr.Errorf("Number of network settings '%d' is greater than the number of network devices '%d'", len(networks), len(interfacesByMAC))
+	// }
+
+	creator.logger.Debug(creator.logTag, "networks 0 in interface_configuration_creator -> create multiple: %s", networks)
 
 	// In cases where we only have one network and it has no MAC address (either because the IAAS doesn't give us one or
 	// it's an old CPI), if we only have one interface, we should map them
@@ -146,6 +148,8 @@ func (creator interfaceConfigurationCreator) CreateInterfaceConfigurations(netwo
 
 func (creator interfaceConfigurationCreator) createMultipleInterfaceConfigurations(networks boshsettings.Networks, interfacesByMAC map[string]string) ([]StaticInterfaceConfiguration, []DHCPInterfaceConfiguration, error) {
 	// Validate potential MAC values on networks exist on host
+	creator.logger.Debug(creator.logTag, "networks 1 in interface_configuration_creator -> create multiple: %s", networks)
+
 	for name := range networks {
 		if mac := networks[name].Mac; mac != "" {
 			if _, ok := interfacesByMAC[mac]; !ok {
@@ -163,6 +167,8 @@ func (creator interfaceConfigurationCreator) createMultipleInterfaceConfiguratio
 
 	// create interface configuration for networks that have a MAC specified
 	for mac, ifaceName := range interfacesByMAC {
+		creator.logger.Debug(creator.logTag, "interfacesByMAC 1 in interface_configuration_creator -> create multiple: %s", interfacesByMAC)
+
 		networkSettings, _ = networks.NetworkForMac(mac)
 		staticConfigs, dhcpConfigs, err = creator.createInterfaceConfiguration(staticConfigs, dhcpConfigs, ifaceName, networkSettings)
 		if err != nil {
@@ -171,7 +177,11 @@ func (creator interfaceConfigurationCreator) createMultipleInterfaceConfiguratio
 	}
 
 	// create interface configuration for networks that do not have a MAC or have an alias
+	creator.logger.Debug(creator.logTag, "networks 2 in interface_configuration_creator -> create multiple: %s", networks)
+
 	for _, networkSettings = range networks {
+		creator.logger.Debug(creator.logTag, "networkSettings 1 in interface_configuration_creator -> create multiple: %s", networkSettings)
+
 		if networkSettings.Mac != "" || networkSettings.Alias == "" {
 			continue
 		}

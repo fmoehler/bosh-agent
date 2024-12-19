@@ -97,6 +97,8 @@ func (net UbuntuNetManager) GetConfiguredNetworkInterfaces() ([]string, error) {
 		}
 	}
 
+	net.logger.Info(UbuntuNetManagerLogTag, "interfaces: %s", interfaces)
+
 	return interfaces, nil
 }
 
@@ -108,6 +110,8 @@ func (net UbuntuNetManager) SetupIPv6(config boshsettings.IPv6, stopCh <-chan st
 }
 
 func (net UbuntuNetManager) SetupNetworking(networks boshsettings.Networks, mbus string, errCh chan error) error {
+	_, _, _, err := net.cmdRunner.RunCommand("ip", "a")
+
 	if networks.IsPreconfigured() {
 		// Note in this case IPs are not broadcast
 		dnsNetwork, _ := networks.DefaultNetworkFor("dns")
@@ -126,6 +130,14 @@ func (net UbuntuNetManager) SetupNetworking(networks boshsettings.Networks, mbus
 	if err != nil {
 		return bosherr.WrapError(err, "Computing network configuration")
 	}
+	net.logger.Info(UbuntuNetManagerLogTag, "networks: %s", networks)
+
+	net.logger.Info(UbuntuNetManagerLogTag, "staticConfigs: %s", staticConfigs)
+
+	net.logger.Info(UbuntuNetManagerLogTag, "dhcpConfigs: %s", dhcpConfigs)
+
+	net.logger.Info(UbuntuNetManagerLogTag, "dnsServers: %s", dnsServers)
+
 	if StaticInterfaceConfigurations(staticConfigs).HasVersion6() {
 		err := net.kernelIPv6.Enable(make(chan struct{}))
 		if err != nil {
@@ -133,7 +145,11 @@ func (net UbuntuNetManager) SetupNetworking(networks boshsettings.Networks, mbus
 		}
 	}
 
+	_, _, _, err = net.cmdRunner.RunCommand("ip", "a")
+
 	changed, err := net.writeNetConfigs(dhcpConfigs, staticConfigs, dnsServers, boshsys.ConvergeFileContentsOpts{})
+	net.logger.Info(UbuntuNetManagerLogTag, "changed: %s", changed)
+
 	if err != nil {
 		return bosherr.WrapError(err, "Updating network configs")
 	}
@@ -143,10 +159,23 @@ func (net UbuntuNetManager) SetupNetworking(networks boshsettings.Networks, mbus
 			return err
 		}
 
+		_, _, _, _ = net.cmdRunner.RunCommand("ip", "a")
+
+		_, _, _, _ = net.cmdRunner.RunCommand("sysctl", "-a", "|", "grep", "ipv6")
+
+		_, _, _, _ = net.cmdRunner.RunCommand("sysctl", "-a", "|", "grep", "disable")
+
+		net.logger.Info(UbuntuNetManagerLogTag, "RESTARTING NETWORKING: %s", dnsServers)
+
 		err := net.restartNetworking()
 		if err != nil {
 			return bosherr.WrapError(err, "Failure restarting networking")
 		}
+		_, _, _, _ = net.cmdRunner.RunCommand("ip", "a")
+
+		_, _, _, _ = net.cmdRunner.RunCommand("sysctl", "-a", "|", "grep", "ipv6")
+		_, _, _, _ = net.cmdRunner.RunCommand("sysctl", "-a", "|", "grep", "disable")
+
 	}
 	staticAddresses, dynamicAddresses := net.ifaceAddresses(staticConfigs, dhcpConfigs)
 
@@ -198,6 +227,8 @@ func (net UbuntuNetManager) ComputeNetworkConfig(networks boshsettings.Networks)
 		}
 		nonVipNetworks[networkName] = networkSettings
 	}
+
+	net.logger.Info(UbuntuNetManagerLogTag, "nonVipNetworks: %s", nonVipNetworks)
 
 	staticConfigs, dhcpConfigs, err := net.buildInterfaces(nonVipNetworks)
 	if err != nil {

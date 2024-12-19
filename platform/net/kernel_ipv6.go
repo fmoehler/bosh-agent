@@ -75,5 +75,7 @@ func (net KernelIPv6Impl) Enable(stopCh <-chan struct{}) error {
 		}
 	}
 
+	_, _, _, err = net.cmdRunner.RunCommand("sysctl", "-a", "|", "grep", "ipv6")
+
 	return nil
 }
