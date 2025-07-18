@@ -45,15 +45,7 @@ func (r defaultNetworkResolver) GetDefaultNetwork(ipProtocol boship.IPProtocol) 
 		ip, err := r.ipResolver.GetPrimaryIP(route.InterfaceName, ipProtocol)
 
 		if err != nil {
-			var ipVersion int
-
-			switch ipProtocol {
-			case boship.IPv4:
-				ipVersion = 4
-			case boship.IPv6:
-				ipVersion = 6
-			}
-			return network, bosherr.WrapErrorf(err, "Getting primary IPv%d for interface '%s'", ipVersion, route.InterfaceName)
+			return network, bosherr.WrapErrorf(err, "Getting primary %s for interface '%s'", ipProtocol, route.InterfaceName)
 		}
 
 		return boshsettings.Network{
